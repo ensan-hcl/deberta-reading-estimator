@@ -50,20 +50,18 @@ class ReadingPredictor:
                     max_similarity = similarity
                     predicted_reading = reading
         return predicted_reading
-    
+
     def _split_reference(self, text):
         # referenceのテキストを形態素解析し、半角スペースで分割する
         result = self.jumanpp.analysis(text)
         text = " ".join([mrph.midasi for mrph in result.mrph_list()])
         text = text.replace("[ MASK ]", self.tokenizer.mask_token)
-        print(text)
         return text
-    
 
     def get_reading_prediction(self, text):
         # Jumanでテキストを形態素解析し、分割する
         result = self.jumanpp.analysis(text)
-        predicted_readings = {}
+        predicted_readings = []
 
         for mrph in result.mrph_list():
             if mrph.midasi in self.references:  # 原形が対象の読み分け単語に含まれる場合
@@ -76,8 +74,9 @@ class ReadingPredictor:
                 predicted_reading = self._get_most_similar_token(
                     mrph.midasi, outputs.logits[0, mask_token_index]
                 )
-                predicted_readings[mrph.midasi] = predicted_reading
-
+                predicted_readings.append((mrph.midasi, predicted_reading))
+            else:
+                predicted_readings.append((mrph.midasi, mrph.yomi))
         return predicted_readings
 
 
@@ -86,36 +85,64 @@ if __name__ == "__main__":
     references = {
         "金": {
             "かね": [
-                f"私は[MASK]を稼ぎたいです",
-                f"たくさんの[MASK]があればなんでも買えます",
+                "私は[MASK]を稼ぎたいです",
+                "たくさんの[MASK]があればなんでも買えます",
             ],
             "きん": [
-                f"[MASK]と銀の採掘を行う仕事",
-                f"私は[MASK]メダルを取りたいです",
-                f"先週の[MASK]の価格はどうでしたか",
-                f"毎週[MASK]曜日に授業があります",
+                "[MASK]と銀の採掘を行う仕事",
+                "私は[MASK]メダルを取りたいです",
+                "先週の[MASK]の価格はどうでしたか",
+                "毎週[MASK]曜日に授業があります",
             ],
             "きむ": [
-                f"[MASK]先生はとても厳しいです",
-                f"韓国の[MASK]はとても有名です",
-                f"[MASK]正恩は北朝鮮の最高指導者です",
+                "[MASK]先生はとても厳しいです",
+                "韓国の[MASK]はとても有名です",
+                "[MASK]正恩は北朝鮮の最高指導者です",
+            ],
+        },
+        "間": {
+            "あいだ": [
+                "私たちの[MASK]には大きな差があります",
+                "この[MASK]には何もありません",
+                "部屋と部屋の[MASK]に謎の隙間があります",
+            ],
+            "ま": [
+                "面白い芸人は[MASK]の取り方が上手い",
+                "話の[MASK]を持たせることが大切です",
+            ],
+        },
+        "紅葉": {
+            "こうよう": [
+                "[MASK]の季節にはたくさんの観光客が訪れます",
+                "[MASK]した葉っぱは赤や黄色で華やかです",
+            ],
+            "もみじ": [
+                "秋になると山の[MASK]がとても綺麗に色づきます",
+                "この[MASK]の木がとても綺麗です",
+            ],
+        },
+        "他": {
+            "ほか": [
+                "この[MASK]、次のような意味があります",
+                "[MASK]の人には何も言わないでください",
+            ],
+            "た": [
+                "その[MASK]大勢の人が集まっていました",
             ],
         },
         "弾く": {
             "ひく": [
-                f"昨日鍵盤ハーモニカを[MASK]経験をしました",
+                "昨日鍵盤ハーモニカを[MASK]経験をしました",
             ],
             "はじく": [
-                f"表面で光を[MASK]ことを反射といいます",
+                "表面で光を[MASK]ことを反射といいます",
             ],
         },
         "行った": {
             "いった": [
-                f"昨日は公園に散歩に[MASK]",
+                "昨日は公園に散歩に[MASK]",
             ],
-            "おこなった": [
-                f"この仮説を検証するため、実験を[MASK]"
-            ],
+            "おこなった": ["この仮説を検証するため、実験を[MASK]"],
         },
     }
 
@@ -130,10 +157,13 @@ if __name__ == "__main__":
         "油は水を弾く",
         "学校に行った",
         "開会式を行った",
+        "君と僕の間で何か隠し事があるのは良くない",
+        "紅葉が綺麗に色づく季節になりました",
+        "紅葉した山の景色",
     ]
 
     for text in texts:
         predicted_readings = predictor.get_reading_prediction(text)
         print(f"Original text: {text}")
-        for word, reading in predicted_readings.items():
-            print(f"Predicted reading for '{word}': {reading}")
+        joined_yomi = "".join([yomi for _, yomi in predicted_readings])
+        print(f"Predicted readings: {joined_yomi}")
