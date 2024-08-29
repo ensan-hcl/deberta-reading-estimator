@@ -1,5 +1,9 @@
 # Reading Estiomator with DeBERTa v2
 
+## TODO
+* 動詞の活用形をいい感じに扱いたい
+* nearest以外の決定方法を試す
+
 ## 環境構築
 
 （オプション）仮想環境を立てる
