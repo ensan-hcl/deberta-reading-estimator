@@ -32,3 +32,7 @@ cd jumanpp-1.02
 make CXXFLAGS="-I/opt/homebrew/Cellar/boost/1.86.0/include"
 sudo make install
 ```
+
+## License
+
+references.jsonのデータは日本語版Wikipediaのライセンスを継承し、CC-BY-SA 4.0で公開します。

@@ -3,6 +3,7 @@ import torch
 from transformers import pipeline
 from pyknp import Juman  # JUMAN tokenizer を使用
 import json
+from copy import deepcopy
 
 class ReadingPredictor:
     def __init__(self, model_name, references):
@@ -10,8 +11,17 @@ class ReadingPredictor:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
         self.model.eval()
-        self.references = references
+        self.references = deepcopy(references)
         # replace [MASK] with tokenizer.mask_token
+        for key, values in self.references.items():
+            for reading, texts in values.items():
+                self.references[key][reading] = [
+                    self._split_reference(text) for text in texts
+                ]
+        self.reference_logits = self._calculate_reference_logits()
+
+    def update_references(self, references):
+        self.references = deepcopy(references)
         for key, values in self.references.items():
             for reading, texts in values.items():
                 self.references[key][reading] = [

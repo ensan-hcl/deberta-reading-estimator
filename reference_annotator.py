@@ -1,0 +1,149 @@
+"""
+リファレンスデータを構成するためのアノテーションツール
+"""
+
+from reading_estimator import ReadingPredictor
+import argparse
+import json
+import random
+
+
+def save_references(references, output_reference_file):
+    with open(output_reference_file, "w") as f:
+        json.dump(references, f, ensure_ascii=False, indent=4)
+
+def main(args):
+    assert len(args.source_file) > 0, "source_file must be specified"
+    references = json.load(open(args.reference_file, "r"))
+    if args.target_word not in references:
+        references[args.target_word] = {}
+    estimator = ReadingPredictor("ku-nlp/deberta-v2-base-japanese", references)
+
+    source_texts = []
+    for source_file in args.source_file:
+        with open(source_file, "r") as f:
+            for line in f:
+                # count must be one
+                if len(line) < 100 and line.count(args.target_word) == 1:
+                    source_texts.append(line.strip())
+    print(f"Found {len(source_texts)} possible lines containing {args.target_word}")
+
+    try:
+        i = 0
+        # randomize
+        random.shuffle(source_texts)
+        for text in source_texts:
+            try:
+                predicted_readings = estimator.get_reading_prediction(text)
+            except ValueError as e:
+                print("Invalid input", text)
+                print("Error:", e)
+                continue
+            if args.target_word in [midasi for midasi, _ in predicted_readings]:
+                i += 1
+                readings = [yomi for _, yomi in predicted_readings]
+                if None in readings:
+                    print("Invalid input", text)
+                    continue
+                predicted_reading = "".join(readings)
+                masked_text = text.replace(args.target_word, "[MASK]")
+                selected_reading = [yomi for midasi, yomi in predicted_readings if midasi == args.target_word][0]
+                if masked_text in references[args.target_word][selected_reading]:
+                    # すでにリファレンスに含まれている場合はスキップ
+                    continue
+
+                print(f"Original text: {text}")
+                print(f"Predicted readings: {predicted_reading}")
+                print("Is it correct? (y/n/skip)")
+                answer = input()
+                if answer == "y":
+                    references[args.target_word][selected_reading].append(masked_text)
+                    print("Added to references")
+                elif answer == "n":
+                    print("Which reading is correct?")
+                    # referencesの中から正しい読みを選択
+                    candidates = list(enumerate(references[args.target_word]))
+                    for i, reading in candidates:
+                        print(i, reading)
+                    print(i+1, "Other")
+                    selected_index = None
+                    while selected_index is None:
+                        try:
+                            selected_index = int(input())
+                            if selected_index not in range(len(candidates)):
+                                selected_index = None
+                                print("Please input a valid index")
+                        except ValueError:
+                            print("Please input a valid index")
+                            continue
+                    if selected_index == i+1:
+                        print("Please input the correct reading")
+                        correct_reading = input()
+                        references[args.target_word][correct_reading] = [masked_text]
+                        print("Added to references")
+                    else:
+                        selected_reading = candidates[selected_index][1]
+                        if masked_text not in references[args.target_word][selected_reading]:
+                            references[args.target_word][selected_reading].append(masked_text)
+                elif answer == "skip":
+                    print("Skipped")
+                    continue
+                else:
+                    print("Invalid input")
+                    continue
+
+                if i % 10 == 0:
+                    print("Updating references...")
+                    estimator.update_references(references)
+                    # save
+                    save_references(references, args.output_reference_file)
+    except Exception as e:
+        print("Invalid input", text)
+        print("Saving references...")
+        save_references(references, args.output_reference_file)
+        print("Saved")
+        raise e
+    except KeyboardInterrupt:
+        print("Saving references...")
+        save_references(references, args.output_reference_file)
+        print("Saved")
+
+    save_references(references, args.output_reference_file)
+
+                
+                
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    # source txt files
+    parser.add_argument(
+        "--source_file",
+        nargs="*",
+        type=str,
+        default=[],
+        help="アノテーション対象のファイルパス",
+    )
+    # target word
+    parser.add_argument(
+        "--target_word",
+        type=str,
+        help="アノテーション対象の単語（midasi）",
+    )
+    # current reference json file (optional)
+    parser.add_argument(
+        "--reference_file",
+        type=str,
+        default="./references.json",
+        help="既存のリファレンスデータのファイルパス",
+    )
+    # output reference json file (optional)
+    parser.add_argument(
+        "--output_reference_file",
+        type=str,
+        default="./updated_references.json",
+        help="新しいのリファレンスデータのファイルパス",
+    )
+    args = parser.parse_args()
+
+    main(args)
