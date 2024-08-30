@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoModelForMaskedLM
 import torch
 from transformers import pipeline
 from pyknp import Juman  # JUMAN tokenizer を使用
-
+import json
 
 class ReadingPredictor:
     def __init__(self, model_name, references):
@@ -82,70 +82,7 @@ class ReadingPredictor:
 
 if __name__ == "__main__":
     # 使用例
-    references = {
-        "金": {
-            "かね": [
-                "私は[MASK]を稼ぎたいです",
-                "たくさんの[MASK]があればなんでも買えます",
-            ],
-            "きん": [
-                "[MASK]と銀の採掘を行う仕事",
-                "私は[MASK]メダルを取りたいです",
-                "先週の[MASK]の価格はどうでしたか",
-                "毎週[MASK]曜日に授業があります",
-            ],
-            "きむ": [
-                "[MASK]先生はとても厳しいです",
-                "韓国の[MASK]はとても有名です",
-                "[MASK]正恩は北朝鮮の最高指導者です",
-            ],
-        },
-        "間": {
-            "あいだ": [
-                "私たちの[MASK]には大きな差があります",
-                "この[MASK]には何もありません",
-                "部屋と部屋の[MASK]に謎の隙間があります",
-            ],
-            "ま": [
-                "面白い芸人は[MASK]の取り方が上手い",
-                "話の[MASK]を持たせることが大切です",
-            ],
-        },
-        "紅葉": {
-            "こうよう": [
-                "[MASK]の季節にはたくさんの観光客が訪れます",
-                "[MASK]した葉っぱは赤や黄色で華やかです",
-            ],
-            "もみじ": [
-                "秋になると山の[MASK]がとても綺麗に色づきます",
-                "この[MASK]の木がとても綺麗です",
-            ],
-        },
-        "他": {
-            "ほか": [
-                "この[MASK]、次のような意味があります",
-                "[MASK]の人には何も言わないでください",
-            ],
-            "た": [
-                "その[MASK]大勢の人が集まっていました",
-            ],
-        },
-        "弾く": {
-            "ひく": [
-                "昨日鍵盤ハーモニカを[MASK]経験をしました",
-            ],
-            "はじく": [
-                "表面で光を[MASK]ことを反射といいます",
-            ],
-        },
-        "行った": {
-            "いった": [
-                "昨日は公園に散歩に[MASK]",
-            ],
-            "おこなった": ["この仮説を検証するため、実験を[MASK]"],
-        },
-    }
-
+    references = json.load(open("references.json", "r"))
     predictor = ReadingPredictor("ku-nlp/deberta-v2-base-japanese", references)
 
     texts = [
