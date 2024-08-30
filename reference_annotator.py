@@ -45,7 +45,7 @@ def main(args):
                 if None in readings:
                     print("Invalid input", text)
                     continue
-                predicted_reading = "".join(readings)
+                description = "".join([midasi if midasi != args.target_word else f"{midasi}({yomi})" for midasi, yomi in predicted_readings])
                 masked_text = text.replace(args.target_word, "[MASK]")
                 selected_reading = [yomi for midasi, yomi in predicted_readings if midasi == args.target_word][0]
                 if masked_text in references[args.target_word][selected_reading]:
@@ -53,7 +53,7 @@ def main(args):
                     continue
 
                 print(f"Original text: {text}")
-                print(f"Predicted readings: {predicted_reading}")
+                print(f"Description  : {description}")
                 print("Is it correct? (y/n/skip)")
                 answer = input()
                 if answer == "y":

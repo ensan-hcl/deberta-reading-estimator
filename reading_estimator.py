@@ -74,7 +74,8 @@ class ReadingPredictor:
         predicted_readings = []
 
         for mrph in result.mrph_list():
-            if mrph.midasi in self.references:  # 原形が対象の読み分け単語に含まれる場合
+            # FIXME: 一文に複数回出現する場合に対応
+            if mrph.midasi in self.references and text.count(mrph.midasi) == 1:  # 原形が対象の読み分け単語に含まれる場合
                 masked_text = text.replace(mrph.midasi, self.tokenizer.mask_token)
                 inputs = self.tokenizer(masked_text, return_tensors="pt")
                 outputs = self.model(**inputs)
