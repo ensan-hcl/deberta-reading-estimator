@@ -2,7 +2,7 @@
 リファレンスデータを構成するためのアノテーションツール
 """
 
-from reading_estimator import ReadingPredictor
+from reading_estimator import ReadingEstimator
 import argparse
 import json
 import random
@@ -17,7 +17,7 @@ def main(args):
     references = json.load(open(args.reference_file, "r"))
     if args.target_word not in references:
         references[args.target_word] = {}
-    estimator = ReadingPredictor("ku-nlp/deberta-v2-base-japanese", references)
+    estimator = ReadingEstimator("ku-nlp/deberta-v2-base-japanese", references)
 
     source_texts = []
     for source_file in args.source_file:

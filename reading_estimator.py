@@ -5,7 +5,7 @@ from pyknp import Juman  # JUMAN tokenizer を使用
 import json
 from copy import deepcopy
 
-class ReadingPredictor:
+class ReadingEstimator:
     def __init__(self, model_name, references):
         self.jumanpp = Juman()  # Jumanを初期化
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -94,7 +94,7 @@ class ReadingPredictor:
 if __name__ == "__main__":
     # 使用例
     references = json.load(open("references.json", "r"))
-    predictor = ReadingPredictor("ku-nlp/deberta-v2-base-japanese", references)
+    predictor = ReadingEstimator("ku-nlp/deberta-v2-base-japanese", references)
 
     texts = [
         "結局世の中は金が全てです",
