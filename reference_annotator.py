@@ -35,12 +35,11 @@ def main(args):
         for text in source_texts:
             try:
                 predicted_readings = estimator.get_reading_prediction(text)
-            except ValueError as e:
+            except Exception as e:
                 print("Invalid input", text)
                 print("Error:", e)
                 continue
             if args.target_word in [midasi for midasi, _ in predicted_readings]:
-                i += 1
                 readings = [yomi for _, yomi in predicted_readings]
                 if None in readings:
                     print("Invalid input", text)
@@ -63,20 +62,20 @@ def main(args):
                     print("Which reading is correct?")
                     # referencesの中から正しい読みを選択
                     candidates = list(enumerate(references[args.target_word]))
-                    for i, reading in candidates:
-                        print(i, reading)
-                    print(i+1, "Other")
+                    for j, reading in candidates:
+                        print(j, reading)
+                    print(j+1, "Other")
                     selected_index = None
                     while selected_index is None:
                         try:
                             selected_index = int(input())
-                            if selected_index not in range(len(candidates)):
+                            if selected_index not in range(len(candidates)+1):
                                 selected_index = None
                                 print("Please input a valid index")
                         except ValueError:
                             print("Please input a valid index")
                             continue
-                    if selected_index == i+1:
+                    if selected_index == j+1:
                         print("Please input the correct reading")
                         correct_reading = input()
                         references[args.target_word][correct_reading] = [masked_text]
@@ -91,7 +90,10 @@ def main(args):
                 else:
                     print("Invalid input")
                     continue
-
+                # 区切り
+                print(f"annotated {i} lines")
+                print()
+                i += 1
                 if i % 10 == 0:
                     print("Updating references...")
                     estimator.update_references(references)
@@ -108,6 +110,8 @@ def main(args):
         save_references(references, args.output_reference_file)
         print("Saved")
 
+
+    print("All lines are annotated")
     save_references(references, args.output_reference_file)
 
                 
@@ -147,3 +151,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+    # mv updated_references.json references.json
+    print("Move updated_references.json to references.json? (y/n)")
+    answer = input()
+    if answer == "y":
+        import shutil
+        shutil.move("updated_references.json", "references.json")
+        print("Moved")
+    else:
+        print("Exit without moving.")
