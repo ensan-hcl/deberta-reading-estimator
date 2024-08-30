@@ -6,12 +6,21 @@ import json
 from copy import deepcopy
 
 class ReadingEstimator:
-    def __init__(self, model_name, references):
+    def __init__(self, model_name, references, evaluation_type="most_similar"):
+        """
+        Args:
+            model_name (str): 使用するモデルの名前
+            references (dict): 参照データ
+            evaluation_type (str): 評価方法
+             - most_similar: コサイン類似度が最も高い読みを予測
+             - average: すべての参照データのコサイン類似度の平均が最も高い読みを予測
+        """
         self.jumanpp = Juman()  # Jumanを初期化
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForMaskedLM.from_pretrained(model_name)
         self.model.eval()
         self.references = deepcopy(references)
+        self.evaluation_type = evaluation_type
         # replace [MASK] with tokenizer.mask_token
         for key, values in self.references.items():
             for reading, texts in values.items():
@@ -47,7 +56,7 @@ class ReadingEstimator:
                     )
         return reference_logits
 
-    def _get_most_similar_token(self, kanji, logit):
+    def _get_most_similar_reading(self, kanji, logit):
         max_similarity = 0
         predicted_reading = None
         # 与えられた漢字に対する全ての読みを確認
@@ -59,6 +68,22 @@ class ReadingEstimator:
                 if similarity > max_similarity:
                     max_similarity = similarity
                     predicted_reading = reading
+        return predicted_reading
+    
+    def _get_average_similar_reading(self, kanji, logit):
+        max_similarity = 0
+        predicted_reading = None
+        # 与えられた漢字に対する全ての読みを確認
+        for reading, values in self.reference_logits[kanji].items():
+            similarity_sum = 0
+            for value in values:
+                similarity_sum += torch.nn.functional.cosine_similarity(
+                    logit, value, dim=1
+                ).item()
+            similarity = similarity_sum / len(values)
+            if similarity > max_similarity:
+                max_similarity = similarity
+                predicted_reading = reading
         return predicted_reading
 
     def _split_reference(self, text):
@@ -82,7 +107,8 @@ class ReadingEstimator:
                 mask_token_index = torch.where(
                     inputs["input_ids"][0] == self.tokenizer.mask_token_id
                 )[0]
-                predicted_reading = self._get_most_similar_token(
+                get_reading = self._get_most_similar_reading if self.evaluation_type == "most_similar" else self._get_average_similar_reading
+                predicted_reading = get_reading(
                     mrph.midasi, outputs.logits[0, mask_token_index]
                 )
                 predicted_readings.append((mrph.midasi, predicted_reading))
@@ -94,7 +120,7 @@ class ReadingEstimator:
 if __name__ == "__main__":
     # 使用例
     references = json.load(open("references.json", "r"))
-    predictor = ReadingEstimator("ku-nlp/deberta-v2-base-japanese", references)
+    predictor = ReadingEstimator("ku-nlp/deberta-v2-base-japanese", references, evaluation_type="most_similar")
 
     texts = [
         "結局世の中は金が全てです",
