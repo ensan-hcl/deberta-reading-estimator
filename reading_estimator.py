@@ -52,7 +52,7 @@ class ReadingEstimator:
                         inputs["input_ids"][0] == self.tokenizer.mask_token_id
                     )[0]
                     reference_logits[kanji][reading].append(
-                        outputs.logits[0, mask_token_index]
+                        (outputs.logits[0, mask_token_index], text)
                     )
         return reference_logits
 
@@ -61,10 +61,11 @@ class ReadingEstimator:
         predicted_reading = None
         # 与えられた漢字に対する全ての読みを確認
         for reading, values in self.reference_logits[kanji].items():
-            for value in values:
+            for (value, text) in values:
                 similarity = torch.nn.functional.cosine_similarity(
                     logit, value, dim=1
                 ).item()
+                # print(f"{reading}, {similarity:04f}, {text}")
                 if similarity > max_similarity:
                     max_similarity = similarity
                     predicted_reading = reading
@@ -76,7 +77,7 @@ class ReadingEstimator:
         # 与えられた漢字に対する全ての読みを確認
         for reading, values in self.reference_logits[kanji].items():
             similarity_sum = 0
-            for value in values:
+            for (value, text) in values:
                 similarity_sum += torch.nn.functional.cosine_similarity(
                     logit, value, dim=1
                 ).item()
@@ -101,7 +102,9 @@ class ReadingEstimator:
         for mrph in result.mrph_list():
             # FIXME: 一文に複数回出現する場合に対応
             if mrph.midasi in self.references and text.count(mrph.midasi) == 1:  # 原形が対象の読み分け単語に含まれる場合
-                masked_text = text.replace(mrph.midasi, self.tokenizer.mask_token)
+                masked_text = " ".join([
+                    self.tokenizer.mask_token if mrph.midasi == item.midasi else item.midasi for item in result.mrph_list()
+                ])
                 inputs = self.tokenizer(masked_text, return_tensors="pt")
                 outputs = self.model(**inputs)
                 mask_token_index = torch.where(
@@ -120,6 +123,8 @@ class ReadingEstimator:
 if __name__ == "__main__":
     # 使用例
     references = json.load(open("references.json", "r"))
+    # 「水」以外のkeyを削除
+    # references = {key: references[key] for key in references if key == "水"}
     predictor = ReadingEstimator("ku-nlp/deberta-v2-base-japanese", references, evaluation_type="most_similar")
 
     texts = [
@@ -129,6 +134,7 @@ if __name__ == "__main__":
         "ピアノを弾くのが好きです",
         "ギターの弦を弾くと音が出ます",
         "油は水を弾く",
+        "生理食塩水",
         "学校に行った",
         "開会式を行った",
         "君と僕の間で何か隠し事があるのは良くない",
