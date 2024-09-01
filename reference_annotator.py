@@ -95,10 +95,10 @@ def main(args):
                 print()
                 i += 1
                 if i % 10 == 0:
-                    print("Updating references...")
-                    estimator.update_references(references)
                     # save
                     save_references(references, args.output_reference_file)
+                    print("Updating references...")
+                    estimator.update_references(references)
     except Exception as e:
         print("Invalid input", text)
         print("Saving references...")
