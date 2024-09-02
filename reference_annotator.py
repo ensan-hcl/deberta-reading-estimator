@@ -17,7 +17,9 @@ def main(args):
     references = json.load(open(args.reference_file, "r"))
     if args.target_word not in references:
         references[args.target_word] = {}
-    estimator = ReadingEstimator("ku-nlp/deberta-v2-base-japanese", references)
+    
+    target_references = references[args.target_word]
+    estimator = ReadingEstimator("ku-nlp/deberta-v2-base-japanese", {args.target_word: references[args.target_word]})
 
     source_texts = []
     for source_file in args.source_file:
@@ -47,7 +49,7 @@ def main(args):
                 description = "".join([midasi if midasi != args.target_word else f"{midasi}({yomi})" for midasi, yomi in predicted_readings])
                 masked_text = text.replace(args.target_word, "[MASK]")
                 selected_reading = [yomi for midasi, yomi in predicted_readings if midasi == args.target_word][0]
-                if masked_text in references[args.target_word][selected_reading]:
+                if masked_text in target_references[selected_reading]:
                     # すでにリファレンスに含まれている場合はスキップ
                     continue
 
@@ -56,12 +58,12 @@ def main(args):
                 print("Is it correct? (y/n/skip)")
                 answer = input()
                 if answer == "y":
-                    references[args.target_word][selected_reading].append(masked_text)
+                    target_references[selected_reading].append(masked_text)
                     print("Added to references")
                 elif answer == "n":
                     print("Which reading is correct?")
                     # referencesの中から正しい読みを選択
-                    candidates = list(enumerate(references[args.target_word]))
+                    candidates = list(enumerate(target_references))
                     for j, reading in candidates:
                         print(j, reading)
                     print(j+1, "Other")
@@ -78,12 +80,12 @@ def main(args):
                     if selected_index == j+1:
                         print("Please input the correct reading")
                         correct_reading = input()
-                        references[args.target_word][correct_reading] = [masked_text]
+                        target_references[correct_reading] = [masked_text]
                         print("Added to references")
                     else:
                         selected_reading = candidates[selected_index][1]
-                        if masked_text not in references[args.target_word][selected_reading]:
-                            references[args.target_word][selected_reading].append(masked_text)
+                        if masked_text not in target_references[selected_reading]:
+                            target_references[selected_reading].append(masked_text)
                 elif answer == "skip":
                     print("Skipped")
                     continue
@@ -98,7 +100,7 @@ def main(args):
                     # save
                     save_references(references, args.output_reference_file)
                     print("Updating references...")
-                    estimator.update_references(references)
+                    estimator.update_references({args.target_word: target_references})
     except Exception as e:
         print("Invalid input", text)
         print("Saving references...")
