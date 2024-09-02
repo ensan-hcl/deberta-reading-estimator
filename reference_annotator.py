@@ -27,6 +27,8 @@ def main(args):
             for line in f:
                 # count must be one
                 if len(line) < 100 and line.count(args.target_word) == 1:
+                    if args.text_filter is not None and args.text_filter not in line:
+                        continue
                     source_texts.append(line.strip())
     print(f"Found {len(source_texts)} possible lines containing {args.target_word}")
 
@@ -148,7 +150,14 @@ if __name__ == "__main__":
         "--output_reference_file",
         type=str,
         default="./updated_references.json",
-        help="新しいのリファレンスデータのファイルパス",
+        help="新しいリファレンスデータのファイルパス",
+    )
+    # text filter (optional)
+    parser.add_argument(
+        "--text_filter",
+        type=str,
+        default=None,
+        help="アノテーション対象のテキストのフィルター"
     )
     args = parser.parse_args()
 
